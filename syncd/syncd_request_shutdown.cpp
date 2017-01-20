@@ -9,8 +9,6 @@
 
 int main(int argc, char **argv)
 {
-    swss::Logger::getInstance().setMinPrio(swss::Logger::SWSS_NOTICE);
-
     SWSS_LOG_ENTER();
 
     static struct option long_options[] =
