@@ -1,6 +1,7 @@
 #include "syncd.h"
 #include "syncd_saiswitch.h"
 #include "sairedis.h"
+#include "syncd_pfc_watchdog.h"
 #include "swss/tokenize.h"
 #include <limits.h>
 
@@ -2309,6 +2310,61 @@ sai_status_t processEvent(
     return status;
 }
 
+void processPfcWdEvent(
+        _In_ swss::ConsumerStateTable &consumer)
+{
+    std::lock_guard<std::mutex> lock(g_mutex);
+
+    SWSS_LOG_ENTER();
+
+    swss::KeyOpFieldsValuesTuple kco;
+    consumer.pop(kco);
+
+    const std::string &key = kfvKey(kco);
+    const std::string &op = kfvOp(kco);
+
+    sai_object_id_t queueId = SAI_NULL_OBJECT_ID;
+    sai_deserialize_object_id(key, queueId);
+
+    const auto values = kfvFieldsValues(kco);
+    for (const auto& valuePair : values)
+    {
+        const std::string field = fvField(valuePair);
+        const std::string value = fvValue(valuePair);
+
+        if (op == DEL_COMMAND)
+        {
+            PfcWatchdog::removeQueue(queueId);
+            continue;
+        }
+
+        auto idStrings  = swss::tokenize(value, ',');
+
+        if (field == "port_counter_id_list")
+        {
+            std::vector<sai_port_stat_t> portCounterIds;
+            for (const auto &str : idStrings)
+            {
+                sai_port_stat_t stat;
+                sai_deserialize_port_stat(str, stat);
+                portCounterIds.push_back(stat);
+            }
+            PfcWatchdog::setPortCounterList(queueId, portCounterIds);
+        }
+        else if (field == "queue_counter_id_list")
+        {
+            std::vector<sai_queue_stat_t> queueCounterIds;
+            for (const auto &str : idStrings)
+            {
+                sai_queue_stat_t stat;
+                sai_deserialize_queue_stat(str, stat);
+                queueCounterIds.push_back(stat);
+            }
+            PfcWatchdog::setQueueCounterList(queueId, queueCounterIds);
+        }
+    }
+}
+
 void printUsage()
 {
     std::cout << "Usage: syncd [-N] [-d] [-p profile] [-i interval] [-t [cold|warm|fast]] [-h] [-u] [-S]" << std::endl;
@@ -2881,13 +2937,15 @@ int main(int argc, char **argv)
     }
 #endif // SAITHRIFT
 
-    std::shared_ptr<swss::DBConnector> db = std::make_shared<swss::DBConnector>(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+    std::shared_ptr<swss::DBConnector> dbAsic = std::make_shared<swss::DBConnector>(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
     std::shared_ptr<swss::DBConnector> dbNtf = std::make_shared<swss::DBConnector>(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+    std::shared_ptr<swss::DBConnector> dbPfcWatchdog = std::make_shared<swss::DBConnector>(PFC_WD_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
 
-    g_redisClient = std::make_shared<swss::RedisClient>(db.get());
+    g_redisClient = std::make_shared<swss::RedisClient>(dbAsic.get());
 
-    std::shared_ptr<swss::ConsumerTable> asicState = std::make_shared<swss::ConsumerTable>(db.get(), ASIC_STATE_TABLE);
-    std::shared_ptr<swss::NotificationConsumer> restartQuery = std::make_shared<swss::NotificationConsumer>(db.get(), "RESTARTQUERY");
+    std::shared_ptr<swss::ConsumerTable> asicState = std::make_shared<swss::ConsumerTable>(dbAsic.get(), ASIC_STATE_TABLE);
+    std::shared_ptr<swss::NotificationConsumer> restartQuery = std::make_shared<swss::NotificationConsumer>(dbAsic.get(), "RESTARTQUERY");
+    std::shared_ptr<swss::ConsumerStateTable> pfcWdState = std::make_shared<swss::ConsumerStateTable>(dbPfcWatchdog.get(), PFC_WD_STATE_TABLE);
 
     /*
      * At the end we cant use producer consumer concept since if one proces
@@ -2895,7 +2953,7 @@ int main(int argc, char **argv)
      * response queue will also trigger another "response".
      */
 
-    getResponse  = std::make_shared<swss::ProducerTable>(db.get(), "GETRESPONSE");
+    getResponse  = std::make_shared<swss::ProducerTable>(dbAsic.get(), "GETRESPONSE");
     notifications = std::make_shared<swss::NotificationProducer>(dbNtf.get(), "NOTIFICATIONS");
 
     g_veryFirstRun = isVeryFirstRun();
@@ -2981,6 +3039,7 @@ int main(int argc, char **argv)
 
         s.addSelectable(asicState.get());
         s.addSelectable(restartQuery.get());
+        s.addSelectable(pfcWdState.get());
 
         SWSS_LOG_NOTICE("starting main loop");
 
@@ -3004,6 +3063,10 @@ int main(int argc, char **argv)
 
                 warmRestartHint = handleRestartQuery(*restartQuery);
                 break;
+            }
+            else if (sel == pfcWdState.get())
+            {
+                processPfcWdEvent(*(swss::ConsumerStateTable*)sel);
             }
 
             if (result == swss::Select::OBJECT)
