@@ -61,11 +61,13 @@ extern volatile bool g_useTempView;
 extern volatile bool g_asicInitViewMode;
 extern volatile bool g_logrotate;
 
-extern sai_service_method_table_t                   g_services;
-extern std::shared_ptr<swss::ProducerTable>         g_asicState;
-extern std::shared_ptr<swss::ConsumerTable>         g_redisGetConsumer;
-extern std::shared_ptr<swss::NotificationConsumer>  g_redisNotifications;
-extern std::shared_ptr<swss::RedisClient>           g_redisClient;
+extern std::map<sai_object_id_t, std::shared_ptr<swss::DBConnector>>                            g_dbMap;
+extern sai_service_method_table_t                             g_services;
+extern std::map<sai_object_id_t, std::shared_ptr<swss::ProducerTable>> g_asicStateMap;
+extern std::shared_ptr<swss::ConsumerTable>                   g_redisGetConsumer;
+extern std::shared_ptr<swss::NotificationConsumer>            g_redisNotifications;
+extern std::shared_ptr<swss::RedisClient>                     g_redisClient;
+extern std::map<sai_object_id_t, std::shared_ptr<swss::RedisPipeline>>                          g_redisPipelineMap;
 
 extern std::mutex g_apimutex;
 
@@ -203,6 +205,7 @@ sai_status_t redis_bulk_generic_create(
         _Inout_ sai_status_t *object_statuses); /* array */
 
 sai_status_t internal_redis_bulk_generic_create(
+        _In_ std::shared_ptr<swss::ProducerTable> asic_state,
         _In_ sai_object_type_t object_type,
         _In_ const std::vector<std::string> &serialized_object_ids,
         _In_ const uint32_t *attr_count,
@@ -216,11 +219,13 @@ sai_status_t redis_bulk_generic_remove(
         _Inout_ sai_status_t *object_statuses) /* array */;
 
 sai_status_t internal_redis_bulk_generic_remove(
+        _In_ std::shared_ptr<swss::ProducerTable> asic_state,
         _In_ sai_object_type_t object_type,
         _In_ const std::vector<std::string> &serialized_object_ids,
         _Out_ sai_status_t *object_statuses); /* array */
 
 sai_status_t internal_redis_bulk_generic_set(
+        _In_ std::shared_ptr<swss::ProducerTable> asic_state,
         _In_ sai_object_type_t object_type,
         _In_ const std::vector<std::string> &serialized_object_ids,
         _In_ const sai_attribute_t *attr_list, /* array */

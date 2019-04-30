@@ -231,7 +231,7 @@ sai_status_t internal_redis_generic_get_stats(
 
     // get is special, it will not put data
     // into asic view, only to message queue
-    g_asicState->set(key, entry, "get_stats");
+    g_asicStateMap.at(SAI_NULL_OBJECT_ID)->set(key, entry, "get_stats");
 
     // wait for response
 

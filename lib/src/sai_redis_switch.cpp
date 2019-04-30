@@ -23,7 +23,7 @@ sai_status_t sai_redis_internal_notify_syncd(
         recordLine("a|" + key);
     }
 
-    g_asicState->set(key, entry, "notify");
+    g_asicStateMap.at(SAI_NULL_OBJECT_ID)->set(key, entry, "notify");
 
     swss::Select s;
 
@@ -267,11 +267,11 @@ sai_status_t redis_set_switch_attribute(
                 return SAI_STATUS_SUCCESS;
 
             case SAI_REDIS_SWITCH_ATTR_USE_PIPELINE:
-                g_asicState->setBuffered(attr->value.booldata);
+                g_asicStateMap.at(SAI_NULL_OBJECT_ID)->setBuffered(attr->value.booldata);
                 return SAI_STATUS_SUCCESS;
 
             case SAI_REDIS_SWITCH_ATTR_FLUSH:
-                g_asicState->flush();
+                g_asicStateMap.at(SAI_NULL_OBJECT_ID)->flush();
                 return SAI_STATUS_SUCCESS;
 
             case SAI_REDIS_SWITCH_ATTR_RECORDING_OUTPUT_DIR:

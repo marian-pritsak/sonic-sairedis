@@ -126,7 +126,9 @@ sai_status_t sai_bulk_create_route_entry(
      * TODO: we need to record operation type
      */
 
+    auto asic_state = g_asicStateMap.at(route_entry[0].switch_id);
     return internal_redis_bulk_generic_create(
+            asic_state,
             SAI_OBJECT_TYPE_ROUTE_ENTRY,
             serialized_object_ids,
             attr_count,
@@ -158,7 +160,8 @@ sai_status_t sai_bulk_remove_route_entry(
                 sai_serialize_route_entry(route_entry[idx]));
     }
 
-    return internal_redis_bulk_generic_remove(SAI_OBJECT_TYPE_ROUTE_ENTRY, serialized_object_ids, object_statuses);
+    auto asic_state = g_asicStateMap.at(route_entry[0].switch_id);
+    return internal_redis_bulk_generic_remove(asic_state, SAI_OBJECT_TYPE_ROUTE_ENTRY, serialized_object_ids, object_statuses);
 }
 
 sai_status_t redis_dummy_set_route_entry(
@@ -273,7 +276,9 @@ sai_status_t sai_bulk_set_route_entry_attribute(
      * TODO: we need to record operation type
      */
 
+    auto asic_state = g_asicStateMap.at(route_entry[0].switch_id);
     return internal_redis_bulk_generic_set(
+            asic_state,
             SAI_OBJECT_TYPE_ROUTE_ENTRY,
             serialized_object_ids,
             attr_list,

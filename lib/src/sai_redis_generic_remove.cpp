@@ -3,6 +3,7 @@
 #include "meta/saiattributelist.h"
 
 sai_status_t internal_redis_generic_remove(
+        _In_ std::shared_ptr<swss::ProducerTable> asic_state,
         _In_ sai_object_type_t object_type,
         _In_ const std::string &serialized_object_id)
 {
@@ -19,7 +20,7 @@ sai_status_t internal_redis_generic_remove(
         recordLine("r|" + key);
     }
 
-    g_asicState->del(key, "remove");
+    asic_state->del(key, "remove");
 
     return SAI_STATUS_SUCCESS;
 }
@@ -32,7 +33,11 @@ sai_status_t redis_generic_remove(
 
     std::string str_object_id = sai_serialize_object_id(object_id);
 
+    sai_object_id_t switch_id = sai_switch_id_query(object_id);
+    auto asic_state = g_asicStateMap.at(switch_id);
+
     sai_status_t status = internal_redis_generic_remove(
+            asic_state,
             object_type,
             str_object_id);
 
@@ -68,13 +73,17 @@ sai_status_t redis_bulk_generic_remove(
         serialized_object_ids.push_back(str_object_id);
     }
 
+    sai_object_id_t switch_id = sai_switch_id_query(object_id[0]);
+    auto asic_state = g_asicStateMap.at(switch_id);
     return internal_redis_bulk_generic_remove(
+            asic_state,
             object_type,
             serialized_object_ids,
             object_statuses);
 }
 
 sai_status_t internal_redis_bulk_generic_remove(
+        _In_ std::shared_ptr<swss::ProducerTable> asic_state,
         _In_ sai_object_type_t object_type,
         _In_ const std::vector<std::string> &serialized_object_ids,
         _Out_ sai_status_t *object_statuses) /* array */
@@ -131,22 +140,24 @@ sai_status_t internal_redis_bulk_generic_remove(
 
     if (entries.size())
     {
-        g_asicState->set(key, entries, "bulkremove");
+        asic_state->set(key, entries, "bulkremove");
     }
 
     return SAI_STATUS_SUCCESS;
 }
 
 
-#define REDIS_ENTRY_REMOVE(OT,ot)                           \
-    sai_status_t redis_generic_remove_ ## ot(               \
-            _In_ const sai_ ## ot ## _t *entry)             \
-        {                                                   \
-            SWSS_LOG_ENTER();                               \
-            std::string str = sai_serialize_ ## ot(*entry); \
-            return internal_redis_generic_remove(           \
-                    SAI_OBJECT_TYPE_ ## OT,                 \
-                    str);                                   \
+#define REDIS_ENTRY_REMOVE(OT,ot)                                       \
+    sai_status_t redis_generic_remove_ ## ot(                           \
+            _In_ const sai_ ## ot ## _t *entry)                         \
+        {                                                               \
+            SWSS_LOG_ENTER();                                           \
+            std::string str = sai_serialize_ ## ot(*entry);             \
+            auto asic_state = g_asicStateMap.at(entry->switch_id);             \
+            return internal_redis_generic_remove(                       \
+                    asic_state,                                         \
+                    SAI_OBJECT_TYPE_ ## OT,                             \
+                    str);                                               \
         }
 
 REDIS_ENTRY_REMOVE(FDB_ENTRY,fdb_entry);

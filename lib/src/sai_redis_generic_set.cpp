@@ -3,6 +3,7 @@
 #include "meta/saiattributelist.h"
 
 sai_status_t internal_redis_generic_set(
+        _In_ std::shared_ptr<swss::ProducerTable> asic_state,
         _In_ sai_object_type_t object_type,
         _In_ const std::string &serialized_object_id,
         _In_ const sai_attribute_t *attr)
@@ -25,13 +26,14 @@ sai_status_t internal_redis_generic_set(
     {
         recordLine("s|" + key + "|" + joinFieldValues(entry));
     }
-
-    g_asicState->set(key, entry, "set");
+    
+    asic_state->set(key, entry, "set");
 
     return SAI_STATUS_SUCCESS;
 }
 
 sai_status_t internal_redis_bulk_generic_set(
+        _In_ std::shared_ptr<swss::ProducerTable> asic_state,
         _In_ sai_object_type_t object_type,
         _In_ const std::vector<std::string> &serialized_object_ids,
         _In_ const sai_attribute_t *attr_list,
@@ -107,7 +109,7 @@ sai_status_t internal_redis_bulk_generic_set(
 
     if (entries.size())
     {
-        g_asicState->set(key, entries, "bulkset");
+        asic_state->set(key, entries, "bulkset");
     }
 
     return SAI_STATUS_SUCCESS;
@@ -121,25 +123,31 @@ sai_status_t redis_generic_set(
 {
     SWSS_LOG_ENTER();
 
+    sai_object_id_t switch_id = sai_switch_id_query(object_id);
+    auto asic_state = g_asicStateMap.at(switch_id);
+
     std::string str_object_id = sai_serialize_object_id(object_id);
 
     return internal_redis_generic_set(
+            asic_state,
             object_type,
             str_object_id,
             attr);
 }
 
-#define REDIS_ENTRY_SET(OT,ot)                          \
-sai_status_t redis_generic_set_ ## ot(                  \
-        _In_ const sai_ ## ot ## _t *entry,             \
-        _In_ const sai_attribute_t *attr)               \
-{                                                       \
-    SWSS_LOG_ENTER();                                   \
-    std::string str = sai_serialize_ ## ot(*entry);     \
-    return internal_redis_generic_set(                  \
-            SAI_OBJECT_TYPE_ ## OT,                     \
-            str,                                        \
-            attr);                                      \
+#define REDIS_ENTRY_SET(OT,ot)                                  \
+sai_status_t redis_generic_set_ ## ot(                          \
+        _In_ const sai_ ## ot ## _t *entry,                     \
+        _In_ const sai_attribute_t *attr)                       \
+{                                                               \
+    SWSS_LOG_ENTER();                                           \
+    std::string str = sai_serialize_ ## ot(*entry);             \
+    auto asic_state = g_asicStateMap.at(entry->switch_id);             \
+    return internal_redis_generic_set(                          \
+            asic_state,                                         \
+            SAI_OBJECT_TYPE_ ## OT,                             \
+            str,                                                \
+            attr);                                              \
 }
 
 REDIS_ENTRY_SET(FDB_ENTRY,fdb_entry);

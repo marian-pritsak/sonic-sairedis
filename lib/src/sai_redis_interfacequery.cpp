@@ -14,13 +14,13 @@ volatile bool          g_run = false;
 swss::SelectableEvent g_redisNotificationTrheadEvent;
 std::shared_ptr<std::thread> notification_thread;
 
-std::shared_ptr<swss::DBConnector>          g_db;
-std::shared_ptr<swss::DBConnector>          g_dbNtf;
-std::shared_ptr<swss::ProducerTable>        g_asicState;
-std::shared_ptr<swss::ConsumerTable>        g_redisGetConsumer;
-std::shared_ptr<swss::NotificationConsumer> g_redisNotifications;
-std::shared_ptr<swss::RedisClient>          g_redisClient;
-std::shared_ptr<swss::RedisPipeline>        g_redisPipeline;
+std::map<sai_object_id_t, std::shared_ptr<swss::DBConnector>>                            g_dbMap;
+std::shared_ptr<swss::DBConnector>                            g_dbNtf;
+std::map<sai_object_id_t, std::shared_ptr<swss::ProducerTable>> g_asicStateMap;
+std::shared_ptr<swss::ConsumerTable>                          g_redisGetConsumer;
+std::shared_ptr<swss::NotificationConsumer>                   g_redisNotifications;
+std::shared_ptr<swss::RedisClient>                            g_redisClient;
+std::map<sai_object_id_t, std::shared_ptr<swss::RedisPipeline>>                          g_redisPipelineMap;
 
 void clear_local_state()
 {
@@ -116,13 +116,19 @@ sai_status_t sai_api_initialize(
 
     memcpy(&g_services, services, sizeof(g_services));
 
-    g_db                 = std::make_shared<swss::DBConnector>(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+    auto asicDb          = std::make_shared<swss::DBConnector>(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
     g_dbNtf              = std::make_shared<swss::DBConnector>(ASIC_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
-    g_redisPipeline      = std::make_shared<swss::RedisPipeline>(g_db.get()); //enable default pipeline 128
-    g_asicState          = std::make_shared<swss::ProducerTable>(g_redisPipeline.get(), ASIC_STATE_TABLE, true);
-    g_redisGetConsumer   = std::make_shared<swss::ConsumerTable>(g_db.get(), "GETRESPONSE");
+    auto redisPipeline      = std::make_shared<swss::RedisPipeline>(asicDb.get()); //enable default pipeline 128
+    auto asicState       = std::make_shared<swss::ProducerTable>(redisPipeline.get(), ASIC_STATE_TABLE, true);
+    g_redisGetConsumer   = std::make_shared<swss::ConsumerTable>(asicDb.get(), "GETRESPONSE");
     g_redisNotifications = std::make_shared<swss::NotificationConsumer>(g_dbNtf.get(), "NOTIFICATIONS");
-    g_redisClient        = std::make_shared<swss::RedisClient>(g_db.get());
+    g_redisClient        = std::make_shared<swss::RedisClient>(asicDb.get());
+
+    /* This is a master ASIC DB*/
+    SWSS_LOG_ERROR("marianp %s", __FUNCTION__);
+    g_dbMap.emplace(SAI_NULL_OBJECT_ID, asicDb);
+    g_redisPipelineMap.emplace(SAI_NULL_OBJECT_ID, redisPipeline);
+    g_asicStateMap.emplace(SAI_NULL_OBJECT_ID, asicState);
 
     clear_local_state();
 

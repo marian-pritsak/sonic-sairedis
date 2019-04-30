@@ -1,4 +1,5 @@
 #include "sai_redis.h"
+#include "sairedis.h"
 #include "meta/sai_serialize.h"
 #include "meta/saiattributelist.h"
 
@@ -198,6 +199,7 @@ void redis_free_virtual_object_id(
 }
 
 sai_status_t internal_redis_generic_create(
+        _In_ std::shared_ptr<swss::ProducerTable> asic_state,
         _In_ sai_object_type_t object_type,
         _In_ const std::string &serialized_object_id,
         _In_ uint32_t attr_count,
@@ -231,7 +233,8 @@ sai_status_t internal_redis_generic_create(
         recordLine("c|" + key + "|" + joinFieldValues(entry));
     }
 
-    g_asicState->set(key, entry, "create");
+    SWSS_LOG_ERROR("marianp SET<<<<<<< %s", __FUNCTION__);
+    asic_state->set(key, entry, "create");
 
     // we assume create will always succeed which may not be true
     // we should make this synchronous call
@@ -259,9 +262,47 @@ sai_status_t redis_generic_create(
         return SAI_STATUS_INSUFFICIENT_RESOURCES;
     }
 
+    if (object_type == SAI_OBJECT_TYPE_SWITCH)
+    {
+        bool slave = false;
+        SWSS_LOG_ERROR("marianp got switch create request");
+        for (uint32_t i = 0; i < attr_count; i++)
+        {
+            if (attr_list[i].id == SAI_REDIS_SWITCH_ATTR_SLAVE_INDEX)
+            {
+                SWSS_LOG_ERROR("marianp got HW info object id 0x%lx", *object_id);
+                SWSS_LOG_ERROR("marianp got HW info %lu", attr_list[i].value.u32);
+                auto asicDb = std::make_shared<swss::DBConnector>(10 + attr_list[i].value.u32, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+                auto redisPipeline = std::make_shared<swss::RedisPipeline>(asicDb.get()); //enable default pipeline 128
+                auto asicState = std::make_shared<swss::ProducerTable>(redisPipeline.get(), ASIC_STATE_TABLE, false);
+
+                g_dbMap.emplace(*object_id, asicDb);
+                g_redisPipelineMap.emplace(*object_id, redisPipeline);
+                g_asicStateMap.emplace(*object_id, asicState);
+                slave = true;
+                break;
+
+            }
+        }
+        if (!slave)
+        {
+            SWSS_LOG_ERROR("marianp no HW info object id 0x%lx", *object_id);
+            g_dbMap.emplace(*object_id, g_dbMap.at(SAI_NULL_OBJECT_ID));
+            g_redisPipelineMap.emplace(*object_id, g_redisPipelineMap.at(SAI_NULL_OBJECT_ID).get());
+            g_asicStateMap.emplace(*object_id, g_asicStateMap.at(SAI_NULL_OBJECT_ID));
+            SWSS_LOG_ERROR("marianp no HW info end");
+        }
+    }
+
+    SWSS_LOG_ERROR("before asic_state object id 0x%lx", *object_id);
+    auto asic_state = g_asicStateMap.at(object_type == SAI_OBJECT_TYPE_SWITCH ? *object_id : switch_id);
+    /* auto asic_state = g_asicStateMap.at(SAI_NULL_OBJECT_ID); */
+    SWSS_LOG_ERROR("after asic_state");
+
     std::string str_object_id = sai_serialize_object_id(*object_id);
 
     return internal_redis_generic_create(
+            asic_state,
             object_type,
             str_object_id,
             attr_count,
@@ -297,7 +338,10 @@ sai_status_t redis_bulk_generic_create(
         serialized_object_ids.push_back(str_object_id);
     }
 
+    auto asic_state = g_asicStateMap.at(switch_id);
+
     return internal_redis_bulk_generic_create(
+            asic_state,
             object_type,
             serialized_object_ids,
             attr_count,
@@ -306,6 +350,7 @@ sai_status_t redis_bulk_generic_create(
 }
 
 sai_status_t internal_redis_bulk_generic_create(
+        _In_ std::shared_ptr<swss::ProducerTable> asic_state,
         _In_ sai_object_type_t object_type,
         _In_ const std::vector<std::string> &serialized_object_ids,
         _In_ const uint32_t *attr_count,
@@ -385,7 +430,7 @@ sai_status_t internal_redis_bulk_generic_create(
 
     if (entries.size())
     {
-        g_asicState->set(key, entries, "bulkcreate");
+        asic_state->set(key, entries, "bulkcreate");
     }
 
     return SAI_STATUS_SUCCESS;
@@ -398,8 +443,10 @@ sai_status_t internal_redis_bulk_generic_create(
             _In_ const sai_attribute_t *attr_list)      \
     {                                                   \
         SWSS_LOG_ENTER();                               \
+        auto asic_state = g_asicStateMap.at(entry->switch_id); \
         std::string str = sai_serialize_ ## ot(*entry); \
         return internal_redis_generic_create(           \
+                asic_state, \
                 SAI_OBJECT_TYPE_ ## OT,                 \
                 str,                                    \
                 attr_count,                             \

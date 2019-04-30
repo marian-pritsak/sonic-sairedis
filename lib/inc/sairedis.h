@@ -104,6 +104,17 @@ typedef enum _sai_redis_switch_attr_t
      */
     SAI_REDIS_SWITCH_ATTR_PERFORM_LOG_ROTATE,
 
+    /**
+     * @brief Slave ASIC DB index.
+     *
+     * This attribute is used to tell sairedis that the requested switch is
+     * a slave ASIC and specifies an offset from the base slave index.
+     *
+     * @type sai_uint32_t
+     * @flags CREATE_ONLY
+     */
+    SAI_REDIS_SWITCH_ATTR_SLAVE_INDEX,
+
 } sai_redis_switch_attr_t;
 
 /*

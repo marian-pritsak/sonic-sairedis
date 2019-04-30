@@ -28,7 +28,7 @@ sai_status_t internal_redis_flush_fdb_entries(
 
     // flush is special, it will not put data
     // into asic view, only to message queue
-    g_asicState->set(key, entry, "flush");
+    g_asicStateMap.at(SAI_NULL_OBJECT_ID)->set(key, entry, "flush");
 
     // wait for response
 
@@ -243,7 +243,10 @@ sai_status_t sai_bulk_create_fdb_entry(
      * TODO: we need to record operation type
      */
 
+    auto asic_state = g_asicStateMap.at(fdb_entry[0].switch_id);
+
     return internal_redis_bulk_generic_create(
+            asic_state, 
             SAI_OBJECT_TYPE_ROUTE_ENTRY,
             serialized_object_ids,
             attr_count,
@@ -275,5 +278,6 @@ sai_status_t sai_bulk_remove_fdb_entry(
                 sai_serialize_fdb_entry(fdb_entry[idx]));
     }
 
-    return internal_redis_bulk_generic_remove(SAI_OBJECT_TYPE_ROUTE_ENTRY, serialized_object_ids, object_statuses);
+    auto asic_state = g_asicStateMap.at(fdb_entry[0].switch_id);
+    return internal_redis_bulk_generic_remove(asic_state, SAI_OBJECT_TYPE_ROUTE_ENTRY, serialized_object_ids, object_statuses);
 }

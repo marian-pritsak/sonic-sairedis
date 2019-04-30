@@ -180,7 +180,7 @@ sai_status_t internal_redis_generic_get(
 
     // get is special, it will not put data
     // into asic view, only to message queue
-    g_asicState->set(key, entry, "get");
+    g_asicStateMap.at(SAI_NULL_OBJECT_ID)->set(key, entry, "get");
 
     // wait for response
 
