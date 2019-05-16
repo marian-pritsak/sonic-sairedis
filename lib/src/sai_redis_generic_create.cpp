@@ -268,7 +268,7 @@ sai_status_t redis_generic_create(
         SWSS_LOG_ERROR("marianp got switch create request");
         for (uint32_t i = 0; i < attr_count; i++)
         {
-            if (attr_list[i].id == SAI_REDIS_SWITCH_ATTR_SLAVE_INDEX)
+            if (attr_list[i].id == SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO)
             {
                 SWSS_LOG_ERROR("marianp got HW info object id 0x%lx", *object_id);
                 SWSS_LOG_ERROR("marianp got HW info %lu", attr_list[i].value.u32);
