@@ -94,6 +94,8 @@ struct cmdOptions
     bool disableExitSleep;
     bool enableUnittests;
     std::string profileMapFile;
+    std::string host;
+    int asicIndex;
 #ifdef SAITHRIFT
     bool run_rpc_server;
     std::string portMapFile;
@@ -3028,9 +3030,9 @@ void handleCmdLine(int argc, char **argv)
 
 #ifdef SAITHRIFT
     options.run_rpc_server = false;
-    const char* const optstring = "dNUCt:p:i:rm:huS";
+    const char* const optstring = "dNUCt:p:i:rm:H:huS";
 #else
-    const char* const optstring = "dNUCt:p:i:huS";
+    const char* const optstring = "dNUCt:p:i:H:huS";
 #endif // SAITHRIFT
 
     while(true)
@@ -3045,6 +3047,8 @@ void handleCmdLine(int argc, char **argv)
             { "disableExitSleep",        no_argument,       0, 'S' },
             { "enableUnittests",         no_argument,       0, 'U' },
             { "enableConsistencyCheck",  no_argument,       0, 'C' },
+            { "host",                    required_argument, 0, 'H' },
+            { "asicIndex",               required_argument, 0, 'i' },
 #ifdef SAITHRIFT
             { "rpcserver",               no_argument,       0, 'r' },
             { "portmap",                 required_argument, 0, 'm' },
@@ -3116,6 +3120,14 @@ void handleCmdLine(int argc, char **argv)
                     SWSS_LOG_ERROR("unknown start type %s", optarg);
                     exit(EXIT_FAILURE);
                 }
+                break;
+            case 'H':
+                SWSS_LOG_NOTICE("host: %s", optarg);
+                options.host = std::string(optarg);
+                break;
+            case 'i':
+                SWSS_LOG_NOTICE("ASIC index: %s", optarg);
+                options.asicIndex = std::stoi(optarg);
                 break;
 
 #ifdef SAITHRIFT
@@ -3540,10 +3552,32 @@ int syncd_main(int argc, char **argv)
     }
 #endif // SAITHRIFT
 
-    std::shared_ptr<swss::DBConnector> dbAsic = std::make_shared<swss::DBConnector>(10, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
-    std::shared_ptr<swss::DBConnector> dbNtf = std::make_shared<swss::DBConnector>(10, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
-    std::shared_ptr<swss::DBConnector> dbFlexCounter = std::make_shared<swss::DBConnector>(FLEX_COUNTER_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
-    std::shared_ptr<swss::DBConnector> dbState = std::make_shared<swss::DBConnector>(STATE_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+    std::shared_ptr<swss::DBConnector> dbAsic;
+    std::shared_ptr<swss::DBConnector> dbNtf;
+    std::shared_ptr<swss::DBConnector> dbFlexCounter;
+    std::shared_ptr<swss::DBConnector> dbState;
+
+    auto asicIndex = ASIC_DB;
+    if (options.asicIndex != 0)
+    {
+        asicIndex = options.asicIndex;
+    }
+
+    if (options.host.empty())
+    {
+        dbAsic = std::make_shared<swss::DBConnector>(asicIndex, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+        dbNtf = std::make_shared<swss::DBConnector>(asicIndex, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+        dbFlexCounter = std::make_shared<swss::DBConnector>(FLEX_COUNTER_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+        dbState = std::make_shared<swss::DBConnector>(STATE_DB, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+    }
+    else
+    {
+        dbAsic = std::make_shared<swss::DBConnector>(asicIndex, options.host, 6379, 0);
+        dbNtf = std::make_shared<swss::DBConnector>(asicIndex, options.host, 6379, 0);
+        dbFlexCounter = std::make_shared<swss::DBConnector>(FLEX_COUNTER_DB, options.host, 6379, 0);
+        dbState = std::make_shared<swss::DBConnector>(STATE_DB, options.host, 6379, 0);
+    }
+
     std::unique_ptr<swss::Table> warmRestartTable = std::unique_ptr<swss::Table>(new swss::Table(dbState.get(), STATE_WARM_RESTART_TABLE_NAME));
 
     g_redisClient = std::make_shared<swss::RedisClient>(dbAsic.get());
