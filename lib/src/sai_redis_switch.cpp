@@ -27,7 +27,7 @@ sai_status_t sai_redis_internal_notify_syncd(
 
     swss::Select s;
 
-    s.addSelectable(g_redisGetConsumer.get());
+    s.addSelectable(g_redisGetConsumerMap.at(SAI_NULL_OBJECT_ID).get());
 
     while (true)
     {
@@ -41,7 +41,7 @@ sai_status_t sai_redis_internal_notify_syncd(
         {
             swss::KeyOpFieldsValuesTuple kco;
 
-            g_redisGetConsumer->pop(kco);
+            g_redisGetConsumerMap.at(SAI_NULL_OBJECT_ID)->pop(kco);
 
             const std::string &op = kfvOp(kco);
             const std::string &opkey = kfvKey(kco);

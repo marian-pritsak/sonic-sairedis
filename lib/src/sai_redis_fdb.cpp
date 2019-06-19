@@ -36,7 +36,7 @@ sai_status_t internal_redis_flush_fdb_entries(
 
     // get consumer will be reused for flush
 
-    s.addSelectable(g_redisGetConsumer.get());
+    s.addSelectable(g_redisGetConsumerMap.at(switch_id).get());
 
     while (true)
     {
@@ -50,7 +50,7 @@ sai_status_t internal_redis_flush_fdb_entries(
         {
             swss::KeyOpFieldsValuesTuple kco;
 
-            g_redisGetConsumer->pop(kco);
+            g_redisGetConsumerMap.at(switch_id)->pop(kco);
 
             const std::string &op = kfvOp(kco);
             const std::string &opkey = kfvKey(kco);

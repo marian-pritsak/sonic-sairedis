@@ -271,14 +271,17 @@ sai_status_t redis_generic_create(
             if (attr_list[i].id == SAI_SWITCH_ATTR_SWITCH_HARDWARE_INFO)
             {
                 SWSS_LOG_ERROR("marianp got HW info object id 0x%lx", *object_id);
-                SWSS_LOG_ERROR("marianp got HW info %lu", attr_list[i].value.u32);
-                auto asicDb = std::make_shared<swss::DBConnector>(10 + attr_list[i].value.u32, swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
+                SWSS_LOG_ERROR("marianp got HW info %s", attr_list[i].value.s8list.list);
+                char *index = (char *)attr_list[i].value.s8list.list;
+                auto asicDb = std::make_shared<swss::DBConnector>(10 + std::stoul(index), swss::DBConnector::DEFAULT_UNIXSOCKET, 0);
                 auto redisPipeline = std::make_shared<swss::RedisPipeline>(asicDb.get()); //enable default pipeline 128
                 auto asicState = std::make_shared<swss::ProducerTable>(redisPipeline.get(), ASIC_STATE_TABLE, false);
+                auto redisGetConsumer   = std::make_shared<swss::ConsumerTable>(asicDb.get(), "GETRESPONSE");
 
                 g_dbMap.emplace(*object_id, asicDb);
                 g_redisPipelineMap.emplace(*object_id, redisPipeline);
                 g_asicStateMap.emplace(*object_id, asicState);
+                g_redisGetConsumerMap.emplace(*object_id, redisGetConsumer);
                 slave = true;
                 break;
 
@@ -288,8 +291,9 @@ sai_status_t redis_generic_create(
         {
             SWSS_LOG_ERROR("marianp no HW info object id 0x%lx", *object_id);
             g_dbMap.emplace(*object_id, g_dbMap.at(SAI_NULL_OBJECT_ID));
-            g_redisPipelineMap.emplace(*object_id, g_redisPipelineMap.at(SAI_NULL_OBJECT_ID).get());
+            g_redisPipelineMap.emplace(*object_id, g_redisPipelineMap.at(SAI_NULL_OBJECT_ID));
             g_asicStateMap.emplace(*object_id, g_asicStateMap.at(SAI_NULL_OBJECT_ID));
+            g_redisGetConsumerMap.emplace(*object_id, g_redisGetConsumerMap.at(SAI_NULL_OBJECT_ID));
             SWSS_LOG_ERROR("marianp no HW info end");
         }
     }

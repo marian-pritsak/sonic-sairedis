@@ -148,6 +148,7 @@ void clear_oid_values(
 sai_status_t internal_redis_generic_get(
         _In_ sai_object_type_t object_type,
         _In_ const std::string &serialized_object_id,
+        _In_ sai_object_id_t switch_id,
         _In_ uint32_t attr_count,
         _Out_ sai_attribute_t *attr_list)
 {
@@ -180,13 +181,13 @@ sai_status_t internal_redis_generic_get(
 
     // get is special, it will not put data
     // into asic view, only to message queue
-    g_asicStateMap.at(SAI_NULL_OBJECT_ID)->set(key, entry, "get");
+    g_asicStateMap.at(switch_id)->set(key, entry, "get");
 
     // wait for response
 
     swss::Select s;
 
-    s.addSelectable(g_redisGetConsumer.get());
+    s.addSelectable(g_redisGetConsumerMap.at(switch_id).get());
 
     while (true)
     {
@@ -200,7 +201,7 @@ sai_status_t internal_redis_generic_get(
         {
             swss::KeyOpFieldsValuesTuple kco;
 
-            g_redisGetConsumer->pop(kco);
+            g_redisGetConsumerMap.at(switch_id)->pop(kco);
 
             const std::string &op = kfvOp(kco);
             const std::string &opkey = kfvKey(kco);
@@ -254,11 +255,13 @@ sai_status_t redis_generic_get(
 {
     SWSS_LOG_ENTER();
 
+    sai_object_id_t switch_id = sai_switch_id_query(object_id);
     std::string str_object_id = sai_serialize_object_id(object_id);
 
     return internal_redis_generic_get(
             object_type,
             str_object_id,
+            switch_id,
             attr_count,
             attr_list);
 }
@@ -274,6 +277,7 @@ sai_status_t redis_generic_get_ ## ot(                  \
     return internal_redis_generic_get(                  \
             SAI_OBJECT_TYPE_ ## OT,                     \
             str,                                        \
+            entry->switch_id, \
             attr_count,                                 \
             attr_list);                                 \
 }

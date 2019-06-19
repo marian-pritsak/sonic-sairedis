@@ -1073,7 +1073,7 @@ sai_status_t meta_generic_validation_create(
 
     SWSS_LOG_DEBUG("attr count = %u", attr_count);
 
-    bool haskeys = false;
+    /* bool haskeys = false; */
 
     // check each attribute separately
     for (uint32_t idx = 0; idx < attr_count; ++idx)
@@ -1111,12 +1111,12 @@ sai_status_t meta_generic_validation_create(
             return SAI_STATUS_INVALID_PARAMETER;
         }
 
-        if (SAI_HAS_FLAG_KEY(md.flags))
-        {
-            haskeys = true;
+        /* if (SAI_HAS_FLAG_KEY(md.flags)) */
+        /* { */
+        /*     haskeys = true; */
 
-            META_LOG_DEBUG(md, "attr is key");
-        }
+        /*     META_LOG_DEBUG(md, "attr is key"); */
+        /* } */
 
         // if we set OID check if exists and if type is correct
         // and it belongs to the same switch id
@@ -1684,22 +1684,22 @@ sai_status_t meta_generic_validation_create(
         }
     }
 
-    if (haskeys)
-    {
-        std::string key = construct_key(meta_key, attr_count, attr_list);
+    /* if (haskeys) */
+    /* { */
+    /*     std::string key = construct_key(meta_key, attr_count, attr_list); */
 
-        for (auto& it: AttributeKeys)
-        {
-            // since we didn't created oid yet, we don't know if attribute key exists, check all
+    /*     for (auto& it: AttributeKeys) */
+    /*     { */
+    /*         // since we didn't created oid yet, we don't know if attribute key exists, check all */
 
-            if (it.second == key)
-            {
-                SWSS_LOG_ERROR("attribute key %s already exists, can't create", key.c_str());
+    /*         if (it.second == key) */
+    /*         { */
+    /*             SWSS_LOG_ERROR("attribute key %s already exists, can't create", key.c_str()); */
 
-                return SAI_STATUS_INVALID_PARAMETER;
-            }
-        }
-    }
+    /*             return SAI_STATUS_INVALID_PARAMETER; */
+    /*         } */
+    /*     } */
+    /* } */
 
     return SAI_STATUS_SUCCESS;
 }

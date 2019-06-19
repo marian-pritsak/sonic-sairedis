@@ -64,7 +64,7 @@ extern volatile bool g_logrotate;
 extern std::map<sai_object_id_t, std::shared_ptr<swss::DBConnector>>                            g_dbMap;
 extern sai_service_method_table_t                             g_services;
 extern std::map<sai_object_id_t, std::shared_ptr<swss::ProducerTable>> g_asicStateMap;
-extern std::shared_ptr<swss::ConsumerTable>                   g_redisGetConsumer;
+extern std::map<sai_object_id_t, std::shared_ptr<swss::ConsumerTable>> g_redisGetConsumerMap;
 extern std::shared_ptr<swss::NotificationConsumer>            g_redisNotifications;
 extern std::shared_ptr<swss::RedisClient>                     g_redisClient;
 extern std::map<sai_object_id_t, std::shared_ptr<swss::RedisPipeline>>                          g_redisPipelineMap;
