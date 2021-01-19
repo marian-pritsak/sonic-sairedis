@@ -326,7 +326,8 @@ void object_reference_inc(
 
     if (!object_reference_exists(oid))
     {
-        SWSS_LOG_THROW("FATAL: object oid 0x%" PRIx64 " not in reference map", oid);
+        SWSS_LOG_ERROR("FATAL: object oid 0x%" PRIx64 " not in reference map, skipping (5)", oid);
+        return;
     }
 
     ObjectReferences[oid]++;
@@ -669,9 +670,9 @@ sai_status_t meta_generic_validation_objlist(
 
         if (!object_reference_exists(oid))
         {
-            META_LOG_ERROR(md, "object on list [%u] oid 0x%" PRIx64 " object type %d does not exists in local DB", i, oid, ot);
+            META_LOG_ERROR(md, "object on list [%u] oid 0x%" PRIx64 " object type %d does not exists in local DB, skipping (3)", i, oid, ot);
 
-            return SAI_STATUS_INVALID_PARAMETER;
+            /* return SAI_STATUS_INVALID_PARAMETER; */
         }
 
         if (i > 1)
@@ -692,8 +693,8 @@ sai_status_t meta_generic_validation_objlist(
 
         if (!object_reference_exists(query_switch_id))
         {
-            SWSS_LOG_ERROR("switch id 0x%" PRIx64 " doesn't exist", query_switch_id);
-            return SAI_STATUS_INVALID_PARAMETER;
+            SWSS_LOG_ERROR("switch id 0x%" PRIx64 " doesn't exist, skipping (4)", query_switch_id);
+            /* return SAI_STATUS_INVALID_PARAMETER; */
         }
 
         if (query_switch_id != switch_id)
@@ -1068,16 +1069,16 @@ sai_status_t meta_generic_validation_create(
 
         if (!object_exists(switch_meta_key))
         {
-            SWSS_LOG_ERROR("switch id 0x%" PRIx64 " doesn't exist yet", switch_id);
+            SWSS_LOG_ERROR("switch id 0x%" PRIx64 " doesn't exist yet, skipping (1)", switch_id);
 
-            return SAI_STATUS_INVALID_PARAMETER;
+            /* return SAI_STATUS_INVALID_PARAMETER; */
         }
 
         if (!object_reference_exists(switch_id))
         {
-            SWSS_LOG_ERROR("switch id 0x%" PRIx64 " doesn't exist yet", switch_id);
+            SWSS_LOG_ERROR("switch id 0x%" PRIx64 " doesn't exist yet, skipping (2)", switch_id);
 
-            return SAI_STATUS_INVALID_PARAMETER;
+            /* return SAI_STATUS_INVALID_PARAMETER; */
         }
 
         // ok

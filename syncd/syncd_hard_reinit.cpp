@@ -216,10 +216,10 @@ void checkAllIds()
                     sai_serialize_object_type(objectType).c_str());
         }
 
-        SWSS_LOG_THROW("vid to rid map is not empty (%zu) after translation", size);
+        /* SWSS_LOG_THROW("vid to rid map is not empty (%zu) after translation", size); */
     }
 
-    redisSetVidAndRidMap(g_translatedV2R);
+    /* redisSetVidAndRidMap(g_translatedV2R); */
 
     /*
      * Now we must check whether we need to remove some objects like VLAN

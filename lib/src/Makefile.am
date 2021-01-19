@@ -12,6 +12,7 @@ libsairedis_la_SOURCES = \
 						 sai_redis_acl.cpp \
 						 sai_redis_bfd.cpp \
 						 sai_redis_bmtor.cpp \
+						 sai_redis_rocemirror.cpp \
 						 sai_redis_bridge.cpp \
 						 sai_redis_buffer.cpp \
 						 sai_redis_debug_counter.cpp \

@@ -8,7 +8,7 @@ extern "C" {
 #define SYNCD_INIT_VIEW  "INIT_VIEW"
 #define SYNCD_APPLY_VIEW "APPLY_VIEW"
 #define SYNCD_INSPECT_ASIC "SYNCD_INSPECT_ASIC"
-#define ASIC_STATE_TABLE "ASIC_STATE"
+#define ASIC_STATE_TABLE "ASIC_STATE_ROCE_EVERFLOW"
 #define TEMP_PREFIX      "TEMP_"
 
 // Messages for processing queries from libsairedis to syncd
